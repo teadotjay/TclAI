@@ -173,9 +173,17 @@ def bot_chatgpt(history: list):
 # Set the bot function to use
 bot = bot_chatgpt
 
+def undo(retry_data: gr.UndoData, history: list[gr.MessageDict]):
+    """
+    Undo the last message in the chat history.
+    """
+    history = history[:retry_data.index]
+    return history, gr.update(interactive=check_for_tcl_code(history))
+
 with gr.Blocks() as demo:
     chatbot = gr.Chatbot(elem_id="chatbot", type="messages", editable="all")
     run_tcl_button = gr.Button("Run Tcl Code", interactive=False)  # Initially disabled
+    chatbot.undo(undo, chatbot, [chatbot, run_tcl_button])
     
     chat_input = gr.MultimodalTextbox(
         interactive=True,
