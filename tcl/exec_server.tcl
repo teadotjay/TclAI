@@ -1,7 +1,7 @@
 #!/usr/bin/env tclsh
 
 namespace eval ::exec_server {
-    source redirect.tcl
+    source tcl/redirect.tcl
 
     # Calculate a random API key
     proc generate_api_key {} {
