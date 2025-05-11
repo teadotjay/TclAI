@@ -28,9 +28,9 @@ async def main():
         result, stdout, stderr = await exec_client.execute_script(script, API_SERVER, API_PORT, API_KEY)
 
         if result or stdout or stderr:
-            print(f"Result: {result}")
-            print(f"Stdout: {stdout}")
-            print(f"Stderr: {stderr}")
+            print(f"{result = }")
+            print(f"{stdout = }")
+            print(f"{stderr = }")
         else:
             print("Failed to get a response from the server.")
             

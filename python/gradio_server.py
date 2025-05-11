@@ -73,6 +73,7 @@ async def execute_tcl_code(chat_history):
             api_result = f"Error calling API: {e}"
         
         # Prepare the chat message
+        #print(f"{api_result = }")
         chat_history.append(gr.ChatMessage(role="user", content=api_result or "silent completion", 
             metadata={"title": "API Response"}))
         
@@ -178,12 +179,12 @@ def undo(retry_data: gr.UndoData, history: list[gr.MessageDict]):
     Undo the last message in the chat history.
     """
     history = history[:retry_data.index]
-    return history, gr.update(interactive=check_for_tcl_code(history))
+    last_message = retry_data.value
+    return history, last_message, gr.update(interactive=check_for_tcl_code(history))
 
 with gr.Blocks() as demo:
-    chatbot = gr.Chatbot(elem_id="chatbot", type="messages", editable="all")
+    chatbot = gr.Chatbot(elem_id="chatbot", type="messages", editable="all", height=800)
     run_tcl_button = gr.Button("Run Tcl Code", interactive=False)  # Initially disabled
-    chatbot.undo(undo, chatbot, [chatbot, run_tcl_button])
     
     chat_input = gr.MultimodalTextbox(
         interactive=True,
@@ -192,6 +193,7 @@ with gr.Blocks() as demo:
         show_label=False,
         sources=["upload"],
     )
+    chatbot.undo(undo, chatbot, [chatbot, chat_input, run_tcl_button])
     chat_msg = chat_input.submit(
         add_message, [chatbot, chat_input], [chatbot, chat_input]
     )

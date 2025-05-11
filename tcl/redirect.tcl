@@ -9,7 +9,7 @@ namespace eval ::redirect {
         method finalize {handle} {
         }
         method write {handle bytes} {
-            append buffer $bytes
+            append buffer "[encoding convertfrom unicode $bytes]"
             return $bytes
         }
         method getBuffer {} {

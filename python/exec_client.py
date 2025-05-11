@@ -36,9 +36,9 @@ async def execute_script(script, server, port, key):
         await writer.drain() # Ensure all data is sent
 
         # Receive the response from the server, line by line
-        result_lines = []
-        stdout_lines = []
-        stderr_lines = []
+        result = ""
+        stdout = ""
+        stderr = ""
         receiving_result = False
         receiving_stdout = False
         receiving_stderr = False
@@ -50,7 +50,7 @@ async def execute_script(script, server, port, key):
                     break  # Connection closed by server
 
                 line = line.decode('utf-8').strip()
-                #print(f"Received line: {line}")  # debugging
+                #print(f"{line = }")  # debugging
 
                 if "BEGIN RESULT" in line:
                     receiving_result = True
@@ -72,23 +72,21 @@ async def execute_script(script, server, port, key):
                     continue
 
                 if receiving_result:
-                    result_lines.append(line + "\n")  # Add newline back
+                    result += line + "\n"  # Add newline back
                 elif receiving_stdout:
-                    stdout_lines.append(line + "\n")
+                    stdout += line + "\n" 
                 elif receiving_stderr:
-                    stderr_lines.append(line + "\n")
+                    stderr += line + "\n" 
         except asyncio.TimeoutError:
             print("Timed out waiting for server response.")
-
-        # Combine lines, removing any trailing newlines
-        result = "".join(result_lines).rstrip('\n') if result_lines else None
-        stdout = "".join(stdout_lines).rstrip('\n') if stdout_lines else None
-        stderr = "".join(stderr_lines).rstrip('\n') if stderr_lines else None
 
         # Close the connection
         writer.close()
         await writer.wait_closed()
 
+        #print(f"{stdout = }")
+        #print(f"{stderr = }")
+        #print(f"{result = }")
         return result, stdout, stderr
 
     except Exception as e:

@@ -1,7 +1,7 @@
-source exec_server.tcl
+source tcl/exec_server.tcl
 
 exec_server::start_server
-exec_server::start_client test_client.py
+exec_server::start_client python/test_client.py
 
 # timeout after 1 seconds (long enough for test)
 after 1000 {set timeout 1}
