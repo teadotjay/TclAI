@@ -1,6 +1,6 @@
 #!/usr/bin/env tclsh
 
-namespace eval ::exec_server {
+namespace eval exec_server {
     source tcl/redirect.tcl
 
     # Calculate a random API key
@@ -140,6 +140,30 @@ namespace eval ::exec_server {
         puts $client_socket "END EXECUTION"
         close $client_socket
         puts "Disconnected from $address:$port"
+        puts "Listening for browser input. Press Enter to break or Ctrl-C to quit..."
         return
+    }  
+    
+    # Enter event loop until Enter is pressed
+    proc resume {} {
+        global keyPressed
+        # Set up a fileevent to read from stdin
+        fileevent stdin readable exec_server::readInput
+
+        # Main program
+        puts "Starting browser interface. Press Enter to break or Ctrl-C to quit..."
+        set keyPressed 0  
+        vwait keyPressed  ;# Wait until keyPressed changes
+
+        puts "Entering interactive mode (if supported); type `resume` to continue in browser."
     }
+
+    # Callback function to handle key press
+    proc readInput {} {
+        global keyPressed
+        gets stdin
+        set keyPressed 1  ;# Change the variable to indicate a key was pressed
+    }
+
+    namespace export start_server start_client resume
 }

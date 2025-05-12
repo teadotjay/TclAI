@@ -170,4 +170,4 @@ def TclAI(completions_command, system_message, bot="bot_chatgpt"):
             bot, chatbot, [chatbot, run_tcl_button]
         )
 
-    demo.launch(inbrowser=True)
+    demo.launch(inbrowser=True, share=False)
