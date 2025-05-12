@@ -1,7 +1,6 @@
 #!/usr/bin/env tclsh
 
 namespace eval exec_server {
-    source tcl/redirect.tcl
 
     # Calculate a random API key
     proc generate_api_key {} {
@@ -115,21 +114,17 @@ namespace eval exec_server {
         if {$valid==4} {
             puts $client_socket "BEGIN EXECUTION"
             puts "Executing code..."
-            set result [redirect::redirect $code out err]
+            set result [redirect::redirect $code out]
         } else {
             puts "Error: Failed valid check."
             close $client_socket
             return
         }
         
-        # Send stdout, stderr, and result back to the client
+        # Send output and result back to the client
         if {[string trim $out] ne ""} {
-            puts "Sending STDOUT to client..."
-            puts $client_socket "BEGIN STDOUT\n$out\nEND STDOUT"
-        }
-        if {[string trim $err] ne ""} {
-            puts "Sending STDERR to client..."
-            puts $client_socket "BEGIN STDERR\n$err\nEND STDERR"
+            puts "Sending OUTPUT to client..."
+            puts $client_socket "BEGIN OUTPUT\n$out\nEND OUTPUT"
         }
         if {$result ne ""} {
             puts "Sending RESULT to client..."

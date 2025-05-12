@@ -17,13 +17,11 @@ namespace eval ::redirect {
         }
     }
 
-    proc redirect {command stdout_var stderr_var} {
-        upvar $stdout_var stdout_value
-        upvar $stderr_var stderr_value
-        set stdout_capture [TeeChannel new]
-        set stderr_capture [TeeChannel new]
-        chan push stdout $stdout_capture
-        chan push stderr $stderr_capture
+    proc redirect {command outvar} {
+        upvar $outvar out_value
+        set capture [TeeChannel new]
+        chan push stdout $capture
+        chan push stderr $capture
 
         try {
             set result [uplevel #0 $command]
@@ -34,9 +32,10 @@ namespace eval ::redirect {
 
         chan pop stdout
         chan pop stderr
-        set stdout_value [string trim [$stdout_capture getBuffer]]
-        set stderr_value [string trim [$stderr_capture getBuffer]]
-        if [info exists error] {append stderr_value $error}
+        set out_value [string trim [$capture getBuffer]]
+        if [info exists error] {append out_value $error}
         return $result
     }
+
+    namespace export redirect
 }

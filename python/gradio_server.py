@@ -47,14 +47,12 @@ async def execute_tcl_code(chat_history):
     if tcl_code:
         try:
             # Call the external API to execute the TCL code
-            result, stdout, stderr = await exec_client.execute_script(tcl_code, API_SERVER, API_PORT, API_KEY)
+            result, output = await exec_client.execute_script(tcl_code, API_SERVER, API_PORT, API_KEY)
             
             # Format the response
             api_result = ""
-            if stdout:
-                api_result += f"stdout:\n```\n{stdout}\n```\n"
-            if stderr:
-                api_result += f"stderr:\n```\n{stderr}\n```\n"
+            if output:
+                api_result += f"output:\n```\n{output}\n```\n"
             if result:
                 api_result += f"result:\n```\n{result}\n```\n"
         except requests.exceptions.RequestException as e:
@@ -106,7 +104,7 @@ def TclAI(completions_command, system_message, bot="bot_chatgpt"):
     def bot_dummy(history: list):
         bot_message = random.choice([
             '```tcl\nputs "Incrementing"\nincr i\n```',
-            '```tcl\nputs stderr "something went wrong"\n```',
+            '```tcl\nerror "something went wrong"\n```',
             "This ain't tcl"
         ])
         history.append({"role": "assistant", "content": ""})

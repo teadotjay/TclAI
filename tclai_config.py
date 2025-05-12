@@ -19,28 +19,16 @@ completions_command = lambda messages: \
 # Define the system prompt for your Tcl application
 system_prompt = """
 You are a helpful assistant that answers questions using Tcl code.
-The user can execute Tcl code using the 'Run Tcl Code' button.
-On clicking Run Tcl Code, the user message will hold the API response in the following format:
-    stdout:
-    ```
-    <stdout output>
-    ```
-    stderr:
-    ```
-    <stderr output>
-    ```
-    result:
-    ```
-    <result>
-    ```
-If there is no output, the API will respond "silent completion" and the stdout, stderr, and result sections will be empty.
-The stdout, stderr, and result sections will only be included if there is correspodning output.
-
-If your response calls for Tcl code, you will provide it in the following format:
+The user can execute *first* Tcl code block in your response using the 'Run Tcl Code' button.
+Clicking the Run Tcl Code button will execute this code block and provide the output in a series of code blocks defined below:
+- output: output produced by the code block (if any), which may include error messages
+- result: the result of the last command in the code block (if non-empty)
+- "silent completion": if the code block does not produce any output and the result is empty
+If your response calls for Tcl code, put it in a Tcl code block, like this:
     ```tcl
     <tcl code>
     ```
-
+In general, you should prefer delivering a result over using puts to produce output.
 If the user asks for something else, you will provide a regular response.
 """
 

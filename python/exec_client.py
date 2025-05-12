@@ -37,11 +37,9 @@ async def execute_script(script, server, port, key):
 
         # Receive the response from the server, line by line
         result = ""
-        stdout = ""
-        stderr = ""
+        output = ""
         receiving_result = False
-        receiving_stdout = False
-        receiving_stderr = False
+        receiving_output = False
 
         try:
             while True:
@@ -58,25 +56,17 @@ async def execute_script(script, server, port, key):
                 elif "END RESULT" in line:
                     receiving_result = False
                     continue
-                elif "BEGIN STDOUT" in line:
-                    receiving_stdout = True
+                elif "BEGIN OUTPUT" in line:
+                    receiving_output = True
                     continue
-                elif "END STDOUT" in line:
-                    receiving_stdout = False
-                    continue
-                elif "BEGIN STDERR" in line:
-                    receiving_stderr = True
-                    continue
-                elif "END STDERR" in line:
-                    receiving_stderr = False
+                elif "END OUTPUT" in line:
+                    receiving_output = False
                     continue
 
                 if receiving_result:
                     result += line + "\n"  # Add newline back
-                elif receiving_stdout:
-                    stdout += line + "\n" 
-                elif receiving_stderr:
-                    stderr += line + "\n" 
+                elif receiving_output:
+                    output += line + "\n" 
         except asyncio.TimeoutError:
             print("Timed out waiting for server response.")
 
@@ -84,10 +74,9 @@ async def execute_script(script, server, port, key):
         writer.close()
         await writer.wait_closed()
 
-        #print(f"{stdout = }")
-        #print(f"{stderr = }")
+        #print(f"{output = }")
         #print(f"{result = }")
-        return result, stdout, stderr
+        return result, output
 
     except Exception as e:
         print(f"Error sending message: {e}")
