@@ -4,9 +4,12 @@ source tcl/exec_server.tcl
 source tcl/redirect.tcl
 
 # If your application *does* provide a redirect function, uncomment and define it here
-#proc redirect::redirect {code outvar} {
-#    redirect -tee -variable $outvar $code
-#}
+# namespace eval redirect {
+#     proc redirect::redirect {command outvar} {
+#         upvar $outvar out_value
+#         ::redirect -tee -variable out_value $command
+#     }
+# }
 
 # Set the server and port
 exec_server::start_server
