@@ -27,6 +27,7 @@ If your response calls for Tcl code, put it in a Tcl code block, like this:
     <tcl code>
     ```
 In general, you should prefer delivering a result over using puts to produce output.
+Do not call `return` outside of a function.
 If the user asks for something else, you will provide a regular response.
 """
 
