@@ -85,7 +85,7 @@ def check_for_tcl_code(chat_history):
     last_bot_response = chat_history[-1]["content"]
     return bool(extract_tcl_code(last_bot_response))
 
-def TclAI(completions_command, system_message, bot="bot_chatgpt"):
+def TclAI(completions_command, system_message, bot="bot_chatgpt", default_model="gpt-4o-mini", all_models=None, dummy=False, app_name="Tcl"):
     """
     Launches a Gradio interface for the TclAI chatbot.
     Args:
@@ -101,11 +101,11 @@ def TclAI(completions_command, system_message, bot="bot_chatgpt"):
             history.append({"role": "user", "content": message["text"]})
         return history, gr.MultimodalTextbox(value=None, interactive=False)
 
-    def bot_dummy(history: list):
+    def bot_dummy(history: list, model_name: str):
         bot_message = random.choice([
-            '```tcl\nputs "Incrementing"\nincr i\n```',
-            '```tcl\nerror "something went wrong"\n```',
-            "This ain't tcl"
+            f'{model_name} says:\n```tcl\nputs "Incrementing"\nincr i\n```',
+            f'{model_name} says:\n```tcl\nerror "something went wrong"\n```',
+            f"{model_name} says:\nThis ain't tcl"
         ])
         history.append({"role": "assistant", "content": ""})
         for character in bot_message:
@@ -117,9 +117,9 @@ def TclAI(completions_command, system_message, bot="bot_chatgpt"):
         enable_tcl_button = check_for_tcl_code(history)
         yield history, gr.update(interactive=enable_tcl_button)
 
-    def bot_chatgpt(history: list):
+    def bot_chatgpt(history: list, model_name):
         messages = [{"role": "system", "content": system_message}] + history
-        stream = completions_command(messages)
+        stream = completions_command(messages, model_name)
         history.append({"role": "assistant", "content": ""})
         for chunk in stream:
             history[-1]['content'] += chunk.choices[0].delta.content or ''
@@ -129,6 +129,8 @@ def TclAI(completions_command, system_message, bot="bot_chatgpt"):
         enable_tcl_button = check_for_tcl_code(history)
         yield history, gr.update(interactive=enable_tcl_button)
 
+    bot = bot_dummy if dummy else bot_chatgpt
+        
     def undo(retry_data: gr.UndoData, history: list[gr.MessageDict]):
         """
         Undo the last message in the chat history.
@@ -137,18 +139,27 @@ def TclAI(completions_command, system_message, bot="bot_chatgpt"):
         last_message = retry_data.value
         return history, last_message, gr.update(interactive=check_for_tcl_code(history))
 
-    # Select the bot function based on the input parameter
-    if (bot=="bot_dummy"):
-        bot = bot_dummy
-    elif (bot=="bot_chatgpt"):
-        bot = bot_chatgpt
-    else:
-        raise ValueError(f"Invalid bot type: {bot}. Must be 'bot_dummy' or 'bot_chatgpt'.")
-    
+    def change_model(model_name: str, history: list[gr.MessageDict]):
+        """
+        Change the model used for generating completions.
+        """
+        history.append({"role": "assistant", "content": f"Model {model_name} selected."})
+        return history
+
     # Create the Gradio interface
     with gr.Blocks() as demo:
-        chatbot = gr.Chatbot(elem_id="chatbot", type="messages", editable="all", height=800)
+        modelPicker = gr.Dropdown(
+            label="Model",
+            choices=all_models,
+            value=default_model,
+            interactive=True,
+        )
+        chatbot = gr.Chatbot(elem_id="chatbot", type="messages", editable="all", height=800,
+            label="TclAI", avatar_images = (None, "https://www.tcl-lang.org/images/plume.png"),
+            value=[{"role": "assistant", "content": f"Connected to {app_name}, using {default_model}. How can I help you?"}])
+        chatbot.show_copy_all_button = True
         run_tcl_button = gr.Button("Run Tcl Code", interactive=False)  # Initially disabled
+        modelPicker.change(change_model, [modelPicker, chatbot], [chatbot])
         
         chat_input = gr.MultimodalTextbox(
             interactive=True,
@@ -161,11 +172,11 @@ def TclAI(completions_command, system_message, bot="bot_chatgpt"):
         chat_msg = chat_input.submit(
             add_message, [chatbot, chat_input], [chatbot, chat_input]
         )
-        bot_msg = chat_msg.then(bot, chatbot, [chatbot, run_tcl_button], api_name="bot_response")
+        bot_msg = chat_msg.then(bot, [chatbot, modelPicker], [chatbot, run_tcl_button], api_name="bot_response")
         bot_msg.then(lambda: gr.MultimodalTextbox(interactive=True), None, [chat_input])
 
         run_tcl_button.click(execute_tcl_code, [chatbot], [chatbot, run_tcl_button]).then(
-            bot, chatbot, [chatbot, run_tcl_button]
+            bot, [chatbot, modelPicker], [chatbot, run_tcl_button]
         )
 
     demo.launch(inbrowser=True, share=False)

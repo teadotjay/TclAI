@@ -7,14 +7,12 @@ from openai import OpenAI  # replace if using a different AI library
 load_dotenv()
 openai_api_key = os.getenv('OPENAI_API_KEY')
 
-# Set the bot function to use (bot_chatgpt or bot_dummy for testing)
-bot = "bot_chatgpt"
-
 # Set the completion command for your AI model
 openai = OpenAI()
-MODEL = "gpt-4o-mini"
-completions_command = lambda messages: \
-    openai.chat.completions.create(model=MODEL, messages=messages, stream=True)
+DEFAULT_MODEL = "gpt-4o-mini"
+MODELS = sorted([model.id for model in openai.models.list()])
+completions_command = lambda messages, model=DEFAULT_MODEL: \
+    openai.chat.completions.create(model=model, messages=messages, stream=True)
 
 # Define the system prompt for your Tcl application
 system_prompt = """
@@ -39,4 +37,4 @@ else:
     raise ValueError("OpenAI API Key not set")
 
 # Start the Gradio interface
-ai.TclAI(completions_command, system_prompt, bot=bot)
+ai.TclAI(completions_command, system_prompt, default_model=DEFAULT_MODEL, all_models=MODELS, dummy=False, app_name="Tcl")
