@@ -1,4 +1,4 @@
-import os; import sys; sys.path.append("python")
+import os; import sys; sys.path.append("common")
 from dotenv import load_dotenv
 import gradio_server as ai
 from openai import OpenAI  # replace if using a different AI library
@@ -27,7 +27,6 @@ If your response calls for Tcl code, put it in a Tcl code block, like this:
     <tcl code>
     ```
 In general, you should prefer delivering a result over using puts to produce output.
-Do not call `return` outside of a function.
 If the user asks for something else, you will provide a regular response.
 """
 

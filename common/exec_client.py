@@ -12,7 +12,7 @@ async def execute_script(script, server, port, key):
         script (str): The code to execute on the server.
 
     Returns:
-        tuple: (result, stdout, stderr),  Any of these can be None
+        tuple: (result, output),  Any of these can be None
             if the server sends no data.
     """
     try:
@@ -80,4 +80,4 @@ async def execute_script(script, server, port, key):
 
     except Exception as e:
         print(f"Error sending message: {e}")
-        return None, None, None
+        return None, None

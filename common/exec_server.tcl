@@ -38,6 +38,49 @@ namespace eval exec_server {
         eval exec python $python_script &
     }
 
+    # TeeChannel class to capture stdout and stderr
+    oo::class create TeeChannel {
+        variable buffer
+        method initialize {handle mode} {
+            if {$mode ne "write"} {error "can't handle reading"}
+            set buffer ""
+            return {finalize initialize write}
+        }
+        method finalize {handle} {
+        }
+        method write {handle bytes} {
+            append buffer "[encoding convertfrom unicode $bytes]"
+            return $bytes
+        }
+        method getBuffer {} {
+            return $buffer
+        }
+    }
+
+    # Runs the command in the global namespace and captures output
+    proc run_command {command outvar} {
+        upvar $outvar out_value
+
+        # Capture stdout and stderr
+        set capture [TeeChannel new]
+        chan push stdout $capture
+        chan push stderr $capture
+
+        # Run command in global namespace
+        set code [catch {uplevel #0 $command} result]
+        if {$code == 1} {
+            set result "error: $result"; list
+        }
+
+        # Restore stdout and stderr
+        chan pop stdout
+        chan pop stderr
+
+        # Get captured output and return result
+        set out_value [string trim [$capture getBuffer]]
+        return $result
+    }
+
     # Callback function to handle incoming connections
     proc accept_connection {api_key client_socket address port} {
         puts "Connection accepted from $address:$port"
@@ -114,7 +157,7 @@ namespace eval exec_server {
         if {$valid==4} {
             puts $client_socket "BEGIN EXECUTION"
             puts "Executing code..."
-            set result [redirect::redirect $code out]
+            set result [run_command $code out]
         } else {
             puts "Error: Failed valid check."
             close $client_socket
@@ -160,5 +203,5 @@ namespace eval exec_server {
         set keyPressed 1  ;# Change the variable to indicate a key was pressed
     }
 
-    namespace export start_server start_client resume
+    namespace export start_server start_client resume redirect
 }
