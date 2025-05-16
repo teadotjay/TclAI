@@ -85,13 +85,16 @@ def check_for_tcl_code(chat_history):
     last_bot_response = chat_history[-1]["content"]
     return bool(extract_tcl_code(last_bot_response))
 
-def TclAI(completions_command, system_message, bot="bot_chatgpt", default_model="gpt-4o-mini", all_models=None, dummy=False, app_name="Tcl"):
+def TclAI(completions_command, system_message, default_model="gpt-4o-mini", all_models=None, dummy=False, app_name="Tcl"):
     """
     Launches a Gradio interface for the TclAI chatbot.
     Args:
         completions_command: The function to call for generating completions.
         system_message: The system message to use for the chatbot.
-        bot: The bot function to use (bot_chatgpt or bot_dummy).
+        default_model: The default model to use.
+        all_models: List of available models.
+        dummy: If True, use a dummy bot for testing.
+        app_name: The name of the application.
     """
 
     def add_message(history, message):

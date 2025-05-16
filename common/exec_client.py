@@ -69,6 +69,7 @@ async def execute_script(script, server, port, key):
                     output += line + "\n" 
         except asyncio.TimeoutError:
             print("Timed out waiting for server response.")
+            return "Timed out waiting for server response.", None
 
         # Close the connection
         writer.close()
@@ -76,8 +77,8 @@ async def execute_script(script, server, port, key):
 
         #print(f"{output = }")
         #print(f"{result = }")
-        return result, output
+        return result.strip(), output.strip()
 
     except Exception as e:
         print(f"Error sending message: {e}")
-        return None, None
+        return f"Error sending message: {e}", None

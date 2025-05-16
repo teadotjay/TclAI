@@ -18,7 +18,7 @@ source common/exec_server.tcl
 
 # Start the Tcl server and Python application
 exec_server::start_server
-exec_server::start_client example/tclai_slave.py
+exec_server::start_client example/tclai_slave.py --clipboard
 
 # Enter event loop until Enter is pressed
 namespace import exec_server::resume

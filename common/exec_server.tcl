@@ -30,12 +30,11 @@ namespace eval exec_server {
         set ::env(API_KEY) $api_key
     }
 
-    proc start_client {python_script} {
-        puts $::env(API_SERVER)
+    proc start_client {python_script args} {
         # Launch the Python script
         puts "Starting exec client: $python_script"
         # Use 'exec' to run the python script in the background (&)
-        eval exec python $python_script &
+        eval exec python $python_script {*}$args &
     }
 
     # TeeChannel class to capture stdout and stderr
@@ -49,7 +48,7 @@ namespace eval exec_server {
         method finalize {handle} {
         }
         method write {handle bytes} {
-            append buffer "[encoding convertfrom unicode $bytes]"
+            append buffer "[encoding convertfrom utf-8 $bytes]"
             return $bytes
         }
         method getBuffer {} {
