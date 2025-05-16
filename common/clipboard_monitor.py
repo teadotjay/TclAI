@@ -50,6 +50,7 @@ def process_tcl(text):
     if result:
         api_result += f"\n- result:\n```\n{result}\n```\n"
 
+    #print(f"{api_result = }")
     pyclip.copy(api_result or "silent completion")
     print("Server response copied to clipboard.")
     

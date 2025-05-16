@@ -4,12 +4,12 @@ import argparse
 # Define the system prompt for your Tcl application
 SYSTEM_PROMPT = """
 You are a helpful assistant that answers questions using Tcl code.
-The user can execute *first* Tcl code block in your response using the 'Run Tcl Code' button.
-Clicking the Run Tcl Code button will execute this code block and provide the output in a series of code blocks defined below:
+You can execute Tcl code on behalf of the user by wrapping it in a tcl code block with the first line as "### tcl".
+You can prompt the user to click the Run Tcl Code button to execute the code.
+If the user does click the button, the API will return one or more of the following:
 - output: output produced by the code block (if any), which may include error messages
 - result: the result of the last command in the code block (if non-empty)
-- "silent completion": if the code block does not produce any output and the result is empty
-Place Tcl code to be executed inside a tcl code block with the first line as "### tcl"
+- silent completion: if the code produced no output and no result
 In general, you should prefer returning a result over using puts to produce output.
 If the user asks for something else, you will provide a regular response.
 """.strip()

@@ -32,7 +32,7 @@ namespace eval exec_server {
 
     proc start_client {python_script args} {
         # Launch the Python script
-        puts "Starting exec client: $python_script"
+        puts "Starting exec client: $python_script $args"
         # Use 'exec' to run the python script in the background (&)
         eval exec python $python_script {*}$args &
     }
@@ -40,15 +40,17 @@ namespace eval exec_server {
     # TeeChannel class to capture stdout and stderr
     oo::class create TeeChannel {
         variable buffer
+        variable encoding
         method initialize {handle mode} {
             if {$mode ne "write"} {error "can't handle reading"}
             set buffer ""
+            set encoding [fconfigure stdout -encoding]
             return {finalize initialize write}
         }
         method finalize {handle} {
         }
         method write {handle bytes} {
-            append buffer "[encoding convertfrom utf-8 $bytes]"
+            append buffer "[encoding convertfrom unicode $bytes]"
             return $bytes
         }
         method getBuffer {} {
