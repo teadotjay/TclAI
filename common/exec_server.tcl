@@ -50,7 +50,7 @@ namespace eval exec_server {
         method finalize {handle} {
         }
         method write {handle bytes} {
-            append buffer "[encoding convertfrom unicode $bytes]"
+            append buffer "[encoding convertfrom $encoding $bytes]"
             return $bytes
         }
         method getBuffer {} {
