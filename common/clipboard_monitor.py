@@ -54,6 +54,11 @@ def process_tcl(text):
     pyclip.copy(api_result or "silent completion")
     print("Server response copied to clipboard.")
     
+def try_paste():
+    try:
+        return pyclip.paste()
+    except Exception as e:
+        return None
 
 def wait_clip(clipnotify_path=None):
     if clipnotify_path:
@@ -61,12 +66,14 @@ def wait_clip(clipnotify_path=None):
         subprocess.run([clipnotify_path, "-s", "clipboard"])
     else:
         # otherwise loop and watch for changes
-        old_contents = pyclip.paste()
-        while old_contents == pyclip.paste():
+        old_contents = try_paste()
+        new_contents = old_contents
+        while old_contents == new_contents:
             time.sleep(0.25)
+            new_contents = try_paste()
 
     # return clipboard contents
-    return pyclip.paste().decode('utf-8')
+    return new_contents.decode('utf-8') if new_contents else ""
     
 def run(system_prompt=None):
     clipnotify_path = shutil.which('clipnotify')
