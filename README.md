@@ -1,5 +1,5 @@
 ## Introduction
-TclAI lets you control a Tcl application from GhatGPT or other LLM API, using a Gradio user interface.
+TclAI lets you control a Tcl application from ChatGPT or other LLM API, using a Gradio user interface.
 
 ![image](https://github.com/user-attachments/assets/86f5d0d5-903f-490e-9193-505b2691ef2c)
 
