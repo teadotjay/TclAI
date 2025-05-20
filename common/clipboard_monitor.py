@@ -23,7 +23,7 @@ def extract_tcl(text):
     Returns:
         The TCL code as a string, or None if no code is found.
     """
-    match = re.search(r"###\s*tcl\s*\n(.*)", text, re.DOTALL)
+    match = re.match(r"###\s*tcl\s*\n(.*)", text, re.DOTALL)
     if match:
         return match.group(1).strip()
     return None
@@ -44,16 +44,22 @@ def process_tcl(text):
     result, output = asyncio.run( exec_client.execute_script(tcl_code, API_SERVER, API_PORT, API_KEY) )
     
     # Format the response
-    api_result = "api_response:"
+    api_result = "**api_response:**"
     if output:
-        api_result += f"\n- output:\n```\n{output}\n```\n"
+        api_result += f"\noutput:\n~~~~\n{output}\n~~~~\n"
     if result:
-        api_result += f"\n- result:\n```\n{result}\n```\n"
+        api_result += f"\nresult:\n~~~~\n{result}\n~~~~\n"
 
     #print(f"{api_result = }")
     pyclip.copy(api_result or "silent completion")
     print("Server response copied to clipboard.")
     
+def process_prompt(text, system_prompt):
+    match = re.match(r"###\s*prompt", text, re.DOTALL)
+    if match:
+        print("Copying system prompt to clipboard.")
+        pyclip.copy("**system_prompt:**\n\n" + system_prompt)
+
 def try_paste():
     try:
         return pyclip.paste()
@@ -64,6 +70,7 @@ def wait_clip(clipnotify_path=None):
     if clipnotify_path:
         # use clipnotify if its path is provided
         subprocess.run([clipnotify_path, "-s", "clipboard"])
+        new_contents = try_paste()
     else:
         # otherwise loop and watch for changes
         old_contents = try_paste()
@@ -90,6 +97,7 @@ def run(system_prompt=None):
             print("Exiting clipboard monitor.")
             return
         process_tcl(contents)
+        process_prompt(contents, system_prompt)
 
 
 if __name__ == "__main__":
