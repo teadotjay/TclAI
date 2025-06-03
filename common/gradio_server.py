@@ -131,11 +131,12 @@ def TclAI(completions_command, system_message, default_model="gpt-4o-mini", all_
             file_content = extract_text_from_file(x)
             file_id = str(uuid.uuid4())
             file_content_store[file_id] = file_content
-            # Put the file_id in the content so it survives serialization
-            history.append(gr.ChatMessage(
-                role="user",
-                content=f"Uploaded file: {file_name} [file_id:{file_id}]"
-            ))
+            # Use a plain dict with metadata
+            history.append({
+                "role": "user",
+                "content": "",
+                "metadata": {"id": file_id, "title": file_name}
+            })
         if message["text"] is not None:
             history.append({"role": "user", "content": message["text"]})
         return history, gr.MultimodalTextbox(value=None, interactive=False)
@@ -161,13 +162,11 @@ def TclAI(completions_command, system_message, default_model="gpt-4o-mini", all_
         for msg in history:
             role = msg.get("role")
             content = msg.get("content", "")
-            # Look for file_id in the content
-            match = re.search(r"\[file_id:([a-f0-9\-]+)\]", content)
-            if match:
-                file_id = match.group(1)
-                file_content = file_content_store.get(file_id)
-                if file_content:
-                    content = f"{content}\n\nFILE CONTENT:\n{file_content}"
+            metadata = msg.get("metadata") or {}
+            file_id = metadata.get("id")
+            if file_id and file_id in file_content_store:
+                file_content = file_content_store[file_id]
+                content = f"{content}\n\nFILE CONTENT:\n{file_content}"
             messages.append({"role": role, "content": content})
 
         stream = completions_command(messages, model_name)
