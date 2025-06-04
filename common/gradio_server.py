@@ -32,9 +32,11 @@ def extract_text_from_pdf(file_path):
 
 def extract_text_from_file(file_path):
     mime, _ = mimetypes.guess_type(file_path)
+    ext = Path(file_path).suffix.lower()
+    print("Uploaded file:", file_path, "MIME type:", mime, "Extension:", ext)
     if mime == "application/pdf":
         return extract_text_from_pdf(file_path)
-    elif mime and mime.startswith("text"):
+    elif (mime and mime.startswith("text")) or ext in [".md", ".markdown", ".py", ".csv", ".json", ".yaml", ".yml"]:
         with open(file_path, encoding="utf-8", errors="ignore") as f:
             return f.read()
     else:
