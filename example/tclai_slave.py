@@ -1,4 +1,6 @@
-import os; import sys; sys.path.append("common")
+import os; import sys
+common_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../common"))
+sys.path.append(common_dir)
 import argparse
 
 # Define the system prompt for your Tcl application
@@ -27,8 +29,7 @@ def tclai_gradio():
     openai = OpenAI()
     default_model = "gpt-4o-mini"
     models = sorted([model.id for model in openai.models.list()])
-    completions_command = lambda messages, model=default_model: \
-        openai.chat.completions.create(model=model, messages=messages, stream=True)
+    completions_command = openai.chat.completions.create
 
     # Test for the OpenAI API key
     if openai_api_key:
