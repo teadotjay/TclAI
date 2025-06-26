@@ -8,11 +8,42 @@ import random
 import sys
 sys.path.append(".")
 from token_count import get_token_count, get_token_count_with_tiktoken
+import mimetypes
+from pathlib import Path
+import uuid
+import PyPDF2
 
 # Get the port and API key from the environment variables
 API_PORT = int(os.environ.get('API_PORT'))
 API_KEY = os.environ.get('API_KEY')
 API_SERVER = os.environ.get('API_SERVER')  # The server is running on the same machine
+
+file_content_store = {}
+
+def extract_text_from_pdf(file_path):
+    try:
+        with open(file_path, "rb") as f:
+            reader = PyPDF2.PdfReader(f)
+            text = ""
+            for page in reader.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n\n"
+        return text.strip() or "[No text found in PDF]"
+    except Exception as e:
+        return f"[Failed to extract PDF: {e}]"
+
+def extract_text_from_file(file_path):
+    mime, _ = mimetypes.guess_type(file_path)
+    ext = Path(file_path).suffix.lower()
+    print("Uploaded file:", file_path, "MIME type:", mime, "Extension:", ext)
+    if mime == "application/pdf":
+        return extract_text_from_pdf(file_path)
+    elif (mime and mime.startswith("text")) or ext in [".md", ".markdown", ".py", ".csv", ".json", ".yaml", ".yml"]:
+        with open(file_path, encoding="utf-8", errors="ignore") as f:
+            return f.read()
+    else:
+        return f"[Unsupported file type: {Path(file_path).name}]"
 
 def extract_tcl_code(text):
     """
@@ -62,7 +93,6 @@ async def execute_tcl_code(chat_history):
             api_result = f"Error calling API: {e}"
         
         # Prepare the chat message
-        #print(f"{api_result = }")
         chat_history.append(gr.ChatMessage(role="user", content=api_result or "silent completion", 
             metadata={"title": "API Response"}))
         
@@ -102,7 +132,16 @@ def TclAI(completions_command, system_message, default_model="gpt-4o-mini", all_
 
     def add_message(history, message):
         for x in message["files"]:
-            history.append({"role": "user", "content": {"path": x}})
+            file_name = Path(x).name
+            file_content = extract_text_from_file(x)
+            file_id = str(uuid.uuid4())
+            file_content_store[file_id] = file_content
+            # Use a plain dict with metadata
+            history.append({
+                "role": "user",
+                "content": "",
+                "metadata": {"id": file_id, "title": file_name}
+            })
         if message["text"] is not None:
             history.append({"role": "user", "content": message["text"]})
         return history, gr.MultimodalTextbox(value=None, interactive=False)
@@ -134,7 +173,17 @@ def TclAI(completions_command, system_message, default_model="gpt-4o-mini", all_
         yield history, gr.update(interactive=enable_tcl_button), gr.update(interactive=True), format_token_count(token_count)
 
     def bot_chatgpt(history: list, model_name: str, system_message: str):
-        messages = [{"role": "system", "content": system_message}] + history
+        messages = [{"role": "system", "content": system_message}]
+        for msg in history:
+            role = msg.get("role")
+            content = msg.get("content", "")
+            metadata = msg.get("metadata") or {}
+            file_id = metadata.get("id")
+            if file_id and file_id in file_content_store:
+                file_content = file_content_store[file_id]
+                content = f"{content}\n\nFILE CONTENT:\n{file_content}"
+            messages.append({"role": role, "content": content})
+
         # Disable input at the start of streaming
         yield history, gr.update(interactive=False), gr.update(interactive=False), format_token_count(None)
         stream = completions_command(
@@ -168,7 +217,12 @@ def TclAI(completions_command, system_message, default_model="gpt-4o-mini", all_
         return history
 
     # Create the Gradio interface
-    with gr.Blocks() as demo:
+    with gr.Blocks(css="""
+#chatbot {
+    height: 60vh !important;
+    min-height: 250px !important;
+}
+""") as demo:
         with gr.Row():
             with gr.Column(scale=1, min_width=0):
                 modelPicker = gr.Dropdown(
@@ -185,9 +239,14 @@ def TclAI(completions_command, system_message, default_model="gpt-4o-mini", all_
                     lines=2,
                     max_lines=4,
                 )
-        chatbot = gr.Chatbot(elem_id="chatbot", type="messages", editable="all", height=800,
-            label="TclAI", avatar_images = (None, "https://www.tcl-lang.org/images/plume.png"),
-            value=[{"role": "assistant", "content": f"Connected to {app_name}, using {default_model}. How can I help you?"}])
+        chatbot = gr.Chatbot(
+            elem_id="chatbot",
+            type="messages",
+            editable="all",
+            label="TclAI",
+            avatar_images=(None, "https://www.tcl-lang.org/images/plume.png"),
+            value=[{"role": "assistant", "content": f"Connected to {app_name}, using {default_model}. How can I help you?"}]
+        )
         chatbot.show_copy_all_button = True
         modelPicker.change(change_model, [modelPicker, chatbot], [chatbot])
         

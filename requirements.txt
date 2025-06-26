@@ -2,3 +2,4 @@ openai
 gradio
 dotenv
 pyclip
+PyPDF2
