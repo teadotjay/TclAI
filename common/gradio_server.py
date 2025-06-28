@@ -12,6 +12,9 @@ import mimetypes
 from pathlib import Path
 import uuid
 import PyPDF2
+import tempfile
+import json
+import re
 
 # Get the port and API key from the environment variables
 API_PORT = int(os.environ.get('API_PORT'))
@@ -37,13 +40,20 @@ def extract_text_from_file(file_path):
     mime, _ = mimetypes.guess_type(file_path)
     ext = Path(file_path).suffix.lower()
     print("Uploaded file:", file_path, "MIME type:", mime, "Extension:", ext)
-    if mime == "application/pdf":
-        return extract_text_from_pdf(file_path)
-    elif (mime and mime.startswith("text")) or ext in [".md", ".markdown", ".py", ".csv", ".json", ".yaml", ".yml"]:
-        with open(file_path, encoding="utf-8", errors="ignore") as f:
-            return f.read()
-    else:
-        return f"[Unsupported file type: {Path(file_path).name}]"
+    try:
+        if mime == "application/pdf":
+            text = extract_text_from_pdf(file_path)
+        elif (mime and mime.startswith("text")) or ext in [".md", ".markdown", ".py", ".csv", ".json", ".yaml", ".yml"]:
+            with open(file_path, encoding="utf-8", errors="ignore") as f:
+                text = f.read()
+        else:
+            text = f"[Unsupported file type: {Path(file_path).name}]"
+    finally:
+        try:
+            os.remove(file_path)
+        except Exception as e:
+            print(f"Warning: Failed to delete temp file {file_path}: {e}")
+    return text
 
 def extract_tcl_code(text):
     """
@@ -146,6 +156,12 @@ def TclAI(completions_command, system_message, default_model="gpt-4o-mini", all_
             history.append({"role": "user", "content": message["text"]})
         return history, gr.MultimodalTextbox(value=None, interactive=False)
 
+    def add_note(history, message):
+        note_text = message.get("text") if isinstance(message, dict) else message
+        if note_text:
+            history.append({"role": "assistant", "content": note_text, "metadata": {"title": "Note"}})
+        return history, gr.MultimodalTextbox(value=None, interactive=True)
+
     def format_token_count(token_count):
         if token_count is None or token_count == "--":
             return "**Tokens:** --"
@@ -155,7 +171,6 @@ def TclAI(completions_command, system_message, default_model="gpt-4o-mini", all_
             return f"**Tokens:** {token_count}"
 
     def bot_dummy(history: list, model_name: str, system_message: str):
-        # Disable input at the start
         yield history, gr.update(interactive=False), gr.update(interactive=False), format_token_count(None)
         bot_message = random.choice([
             f'{model_name} says:\n```tcl\nputs "Incrementing"\nincr i\n```',
@@ -167,22 +182,29 @@ def TclAI(completions_command, system_message, default_model="gpt-4o-mini", all_
             history[-1]['content'] += character
             time.sleep(0.01)
             yield history, gr.update(interactive=False), gr.update(interactive=False), format_token_count(None)
-        # Enable/disable the button and re-enable input based on the bot's response
         enable_tcl_button = check_for_tcl_code(history)
         token_count = get_token_count_with_tiktoken(history, model=model_name)
+        # Combine updates for the chat_input (third and fifth outputs)
         yield history, gr.update(interactive=enable_tcl_button), gr.update(interactive=True), format_token_count(token_count)
 
-    def bot_chatgpt(history: list, model_name: str, system_message: str):
+    def format_messages(history, system_message):
         messages = [{"role": "system", "content": system_message}]
         for msg in history:
             role = msg.get("role")
             content = msg.get("content", "")
             metadata = msg.get("metadata") or {}
             file_id = metadata.get("id")
+            if metadata.get("title") in ["Note", "Info"]:
+                continue  # Skip notes for the bot
             if file_id and file_id in file_content_store:
+                # Add file content to the message
                 file_content = file_content_store[file_id]
                 content = f"{content}\n\nFILE CONTENT:\n{file_content}"
             messages.append({"role": role, "content": content})
+        return messages
+
+    def bot_chatgpt(history: list, model_name: str, system_message: str):
+        messages = format_messages(history, system_message)
 
         # Disable input at the start of streaming
         yield history, gr.update(interactive=False), gr.update(interactive=False), format_token_count(None)
@@ -194,9 +216,15 @@ def TclAI(completions_command, system_message, default_model="gpt-4o-mini", all_
         for chunk in stream:
             history[-1]['content'] += chunk.choices[0].delta.content or ''
             yield history, gr.update(interactive=False), gr.update(interactive=False), format_token_count(None)
-        # Enable/disable the button and re-enable input based on the bot's response
+
+        # Check if response contains tcl code and enable/disable the button
         enable_tcl_button = check_for_tcl_code(history)
-        token_count = get_token_count(completions_command, history, model=model_name)
+
+        # Compute token count using formatted messages (sans system prompt) + last response
+        formatted_messages = messages[1:] + [history[-1]]
+        token_count = get_token_count(completions_command, formatted_messages, model=model_name)
+
+        # Yield the updated history, button state, and token count
         yield history, gr.update(interactive=enable_tcl_button), gr.update(interactive=True), format_token_count(token_count)
 
     bot = bot_dummy if dummy else bot_chatgpt
@@ -213,8 +241,38 @@ def TclAI(completions_command, system_message, default_model="gpt-4o-mini", all_
         """
         Change the model used for generating completions.
         """
-        history.append({"role": "assistant", "content": f"Model {model_name} selected."})
+        history.append({"role": "assistant", "metadata": {"title": "Info"}, "content": f"Model {model_name} selected."})
         return history
+
+    def save_chat(history, prompt, model, token_text):
+        """
+        Save the full chat history, including system_message and model
+        """
+        # Parse out the token count as an integer from the token_text (e.g., "**Tokens:** 123")
+        parts = token_text.split()
+        if len(parts) > 1:
+            try:
+                token_count = int(parts[1])
+            except Exception:
+                token_count = token_count
+        chat_data = {
+            "system_prompt": prompt,
+            "model": model,
+            "tokens": token_count,
+            "history": history
+        }
+        with tempfile.NamedTemporaryFile(delete=False, mode="w", suffix=".json", encoding="utf-8") as f:
+            json.dump(chat_data, f, ensure_ascii=False, indent=2)
+            return [gr.Button(visible=False), gr.DownloadButton(value=f.name, visible=True)]
+
+    def download_chat():
+        # Remove the temporary file after download
+        if download_chat_button.value:
+            try:
+                os.remove(download_chat_button.value)
+            except Exception:
+                pass
+        return [gr.Button(visible=True), gr.DownloadButton(visible=False)]
 
     # Create the Gradio interface
     with gr.Blocks(css="""
@@ -245,7 +303,7 @@ def TclAI(completions_command, system_message, default_model="gpt-4o-mini", all_
             editable="all",
             label="TclAI",
             avatar_images=(None, "https://www.tcl-lang.org/images/plume.png"),
-            value=[{"role": "assistant", "content": f"Connected to {app_name}, using {default_model}. How can I help you?"}]
+            value=[{"role": "assistant", "metadata": {"title": "Info"}, "content": f"Connected to {app_name}, using {default_model}. How can I help you?"}],
         )
         chatbot.show_copy_all_button = True
         modelPicker.change(change_model, [modelPicker, chatbot], [chatbot])
@@ -253,8 +311,13 @@ def TclAI(completions_command, system_message, default_model="gpt-4o-mini", all_
         with gr.Row():
             with gr.Column(scale=1, min_width=0):
                 token_count_display = gr.Markdown("**Tokens:** 0", elem_id="token-count-display")
-            with gr.Column(scale=3):
+            with gr.Column(scale=2):
                 run_tcl_button = gr.Button("Run Tcl Code", interactive=False)
+            with gr.Column(scale=1, min_width=0):
+                add_note_button = gr.Button("Add Note", variant="secondary")
+            with gr.Column(scale=1, min_width=0):
+                save_chat_button = gr.Button("Save Chat", variant="secondary")
+                download_chat_button = gr.DownloadButton(label="Download Chat", visible=False)
 
         chat_input = gr.MultimodalTextbox(
             interactive=True,
@@ -262,16 +325,27 @@ def TclAI(completions_command, system_message, default_model="gpt-4o-mini", all_
             placeholder="Enter message or upload file...",
             show_label=False,
             sources=["upload"],
+            autofocus=True
         )
 
         chatbot.undo(undo, chatbot, [chatbot, chat_input, run_tcl_button])
         chat_msg = chat_input.submit(
             add_message, [chatbot, chat_input], [chatbot, chat_input]
+        ).then(
+            bot, [chatbot, modelPicker, prompt_input], [chatbot, run_tcl_button, chat_input, token_count_display], api_name="bot_response"
         )
-        bot_msg = chat_msg.then(bot, [chatbot, modelPicker, prompt_input], [chatbot, run_tcl_button, chat_input, token_count_display], api_name="bot_response")
 
-        run_tcl_button.click(execute_tcl_code, [chatbot], [chatbot, run_tcl_button]).then(
+        run_tcl_button.click(
+            execute_tcl_code, [chatbot], [chatbot, run_tcl_button]
+        ).then(
             bot, [chatbot, modelPicker, prompt_input], [chatbot, run_tcl_button, chat_input, token_count_display]
         )
+
+        add_note_button.click(
+            add_note, [chatbot, chat_input], [chatbot, chat_input]
+        )
+
+        save_chat_button.click(save_chat, [chatbot, prompt_input, modelPicker, token_count_display], [save_chat_button, download_chat_button])
+        download_chat_button.click(download_chat, [], [save_chat_button, download_chat_button])
 
     demo.launch(inbrowser=True, share=False)

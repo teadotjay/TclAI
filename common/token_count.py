@@ -15,7 +15,7 @@ def get_token_count_with_tiktoken(messages, model="gpt-3.5-turbo"):
         num_tokens += tokens_per_message
         for key, value in message.items():
             num_tokens += len(encoding.encode(str(value)))
-    num_tokens -= 4  # See previous discussion for why
+    num_tokens -= 4  # Adjust for the last message's end token
     return num_tokens
 
 def get_token_count_with_dummy_completion(completions_command, messages, model="gpt-3.5-turbo"):
@@ -30,7 +30,7 @@ def get_token_count_with_dummy_completion(completions_command, messages, model="
         max_tokens=1,
         stream=False
     )
-    return resp.usage.prompt_tokens - 4
+    return resp.usage.prompt_tokens - 4 # Adjust for the last message's end token
 
 def get_token_count(completions_command, messages, model="gpt-3.5-turbo"):
     """

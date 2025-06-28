@@ -6,15 +6,18 @@ import argparse
 # Define the system prompt for your Tcl application
 SYSTEM_PROMPT = """
 You are a helpful assistant that answers questions using Tcl code.
-You can execute Tcl code on behalf of the user by wrapping it in a tcl code block with the first line as "### tcl".
+You can execute Tcl code on behalf of the user by wrapping it in a ```tcl code block. This only applies to the first code block in the message.
 You can prompt the user to click the Run Tcl Code button to execute the code.
 If the user does click the button, the API will return one or more of the following:
 - output: output produced by the code block (if any), which may include error messages
 - result: the result of the last command in the code block (if non-empty)
 - silent completion: if the code produced no output and no result
-In general, you should prefer returning a result over using puts to produce output.
-If the user asks for something else, you will provide a regular response.
+You should prefer returning a result over using puts to produce output.
+If the user asks for something else, you should provide a regular response.
 """.strip()
+
+# OpenAI chat models:
+# ['gpt-4-0613', 'gpt-4', 'gpt-3.5-turbo', 'gpt-4-1106-preview', 'gpt-3.5-turbo-1106', 'gpt-4-0125-preview', 'gpt-4-turbo-preview', 'gpt-3.5-turbo-0125', 'gpt-4-turbo', 'gpt-4-turbo-2024-04-09', 'gpt-4o', 'gpt-4o-2024-05-13', 'gpt-4o-mini-2024-07-18', 'gpt-4o-mini', 'gpt-4o-2024-08-06', 'chatgpt-4o-latest', 'o1-preview-2024-09-12', 'o1-preview', 'o1-mini-2024-09-12', 'o1-mini', 'gpt-4o-2024-11-20', 'gpt-4.5-preview', 'gpt-4.5-preview-2025-02-27', 'gpt-4o-search-preview-2025-03-11', 'gpt-4o-search-preview', 'gpt-4o-mini-search-preview-2025-03-11', 'gpt-4o-mini-search-preview', 'gpt-4.1-2025-04-14', 'gpt-4.1', 'gpt-4.1-mini-2025-04-14', 'gpt-4.1-mini', 'gpt-4.1-nano-2025-04-14', 'gpt-4.1-nano', 'gpt-3.5-turbo-16k']
 
 def tclai_gradio():
     from dotenv import load_dotenv
