@@ -1,5 +1,7 @@
 #!/usr/bin/env tclsh
 
+## WARNING: This API is for example purposes only and not secure for multi-user systems.
+
 namespace eval exec_server {
 
     # Calculate a random API key
@@ -23,6 +25,8 @@ namespace eval exec_server {
         set port [lindex $port end]
 
         puts "Starting exec server on $server:$port (key=$api_key)"
+        puts "WARNING: This API is for example purposes only and not secure for multi-user systems."
+
 
         # Set the environment variables for the Python script
         set ::env(API_SERVER) $server
